@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+        .bar {
+            stroke: black;
+            stroke-width: 1px;
+        }
+        .label {
+            font-size: 12px;
+            fill: black;
+        }
+        .tooltip {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 8px;
+            border-radius: 5px;
+            font-size: 12px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s ease-in-out;
+        }
+
+        .axis-y {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <h3 style="text-align:center; color: blue; font-size: 20px; font-weight: bold;">Doanh số bán hàng trung bình theo Ngày trong tháng</h3>
+    <div id="chart"></div>
+
+    <script>
+        const margin = {top: 20, right: 30, bottom: 50, left: 80},
+            width = 1200 - margin.left - margin.right,
+            height = 400 - margin.top - margin.bottom;
+
+        const svg = d3.select("#chart")
+            .append("svg")
+            .attr("width", width + margin.left + margin.right)
+            .attr("height", height + margin.top + margin.bottom)
+            .append("g")
+            .attr("transform", `translate(${margin.left},${margin.top})`);
+
+        const tooltip = d3.select("body").append("div").attr("class", "tooltip").style("opacity", 0);
+
+        d3.csv("data_ggsheet - data.csv").then(data => {
+            const parseDate = d3.timeParse("%Y-%m-%d %H:%M:%S");
+            const formatDay = d3.timeFormat("%d");
+
+            data.forEach(d => {
+                d.date = parseDate(d["Thời gian tạo đơn"]);
+                d.Ngay = d.date ? +formatDay(d.date) : -1;  
+                d["Thành tiền"] = +d["Thành tiền"];
+                d["SL"] = +d["SL"];
+            });
+
+            const groupedData = d3.rollup(
+                data,
+                v => ({
+                    TongDoanhThu: d3.sum(v, d => d["Thành tiền"]),
+                    TongSL: d3.sum(v, d => d["SL"]),
+                    SoLanXuatHien: d3.rollup(v, d => new Set(d.map(d => d.date.toISOString().split("T")[0])).size, d => d.Ngay).get(v[0].Ngay) || 1
+                }),
+                d => d.Ngay
+            );
+
+            const doanhThuTrungBinh = Array.from(groupedData, ([Ngay, values]) => ({
+                Ngay,
+                DoanhThuTrungBinh: values.TongDoanhThu / values.SoLanXuatHien / 1_000_000,
+                SoLuongTrungBinh: values.TongSL / values.SoLanXuatHien
+            })).sort((a, b) => a.Ngay - b.Ngay);
+
+            const color = d3.scaleOrdinal()
+                .domain(doanhThuTrungBinh.map(d => d.Ngay))
+                .range(d3.schemeCategory10);
+
+            const x = d3.scaleBand()
+                .domain(doanhThuTrungBinh.map(d => d.Ngay))
+                .range([0, width])
+                .padding(0.2);
+
+            svg.append("g")
+                .attr("transform", `translate(0,${height})`)
+                .call(d3.axisBottom(x).tickFormat(d => `Ngày ${d}`))
+                .selectAll("text")
+                .attr("transform", "rotate(-45)")
+                .style("text-anchor", "end");
+
+            const y = d3.scaleLinear()
+                .domain([0, d3.max(doanhThuTrungBinh, d => d.DoanhThuTrungBinh) * 1.2])
+                .nice()
+                .range([height, 0]);
+
+                svg.selectAll(".bar")
+                    .data(doanhThuTrungBinh)
+                    .enter()
+                    .append("rect")
+                    .attr("class", "bar")
+                    .attr("x", d => x(d.Ngay))
+                    .attr("y", d => y(d.DoanhThuTrungBinh))
+                    .attr("width", x.bandwidth())
+                    .attr("height", d => height - y(d.DoanhThuTrungBinh))
+                    .attr("fill", d => color(d.Ngay))
+                    .on("mouseover", function(event, d) {
+                        tooltip.style("opacity", 1)  // Hiển thị tooltip
+                            .html(
+                                `<strong>Ngày ${d.Ngay}</strong><br>Doanh số TB: ${d.DoanhThuTrungBinh.toFixed(1)} triệu VND<br>Số lượng bán TB: ${d.SoLuongTrungBinh.toFixed(0)} SKUs`
+                            )
+                            .style("left", (event.pageX + 10) + "px")
+                            .style("top", (event.pageY - 28) + "px");
+                    })
+                    .on("mousemove", function(event) {
+                        tooltip.style("left", (event.pageX + 10) + "px")
+                            .style("top", (event.pageY - 28) + "px");
+                    })
+                    .on("mouseout", function() {
+                        tooltip.style("opacity", 0); 
+                    });
+
+
+            svg.selectAll(".label")
+                .data(doanhThuTrungBinh)
+                .enter()
+                .append("text")
+                .attr("class", "label")
+                .attr("x", d => x(d.Ngay) + x.bandwidth() / 2)
+                .attr("y", d => y(d.DoanhThuTrungBinh) - 5)
+                .attr("text-anchor", "middle")
+                .text(d => d.DoanhThuTrungBinh.toFixed(1) + " tr");
+        });
+    </script>
+</body>
+</html>

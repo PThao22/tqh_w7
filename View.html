@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Dashboard D3.js</title>
+    <style>
+        body, html { 
+            height: 100%; 
+            margin: 0; 
+        }
+        .tab { 
+            display: flex; 
+            border-bottom: 2px solid #ddd; 
+            cursor: pointer; 
+            flex-wrap: wrap; 
+            justify-content: center; 
+            gap: 5px; 
+        }
+
+        .tab button { 
+            background: none; 
+            border: none; 
+            padding: 5px 10px; 
+            font-size: 14px;
+            cursor: pointer; 
+            min-width: 50px;
+        }
+
+        .tab button.active { 
+            border-bottom: 3px solid blue; 
+            font-weight: bold; 
+        }
+
+        .tabcontent { 
+            display: none; 
+            justify-content: center; 
+            align-items: center; 
+
+        }
+        .tabcontent.active { 
+            display: flex; 
+        }
+        iframe { width: 100%; height: 550px; border: none; }
+    </style>
+</head>
+<body>
+    <h3 style=" font-size: 18px;">Dashboard D3.js</h3>
+
+    <div class="tab">
+        <button class="tablinks active" onclick="openTab(event, 'chart1', 'BD1.html')">Q1</button>
+        <button class="tablinks" onclick="openTab(event, 'chart2', 'BD2.html')">Q2</button>
+        <button class="tablinks" onclick="openTab(event, 'chart3', 'BD3.html')">Q3</button>
+        <button class="tablinks" onclick="openTab(event, 'chart4', 'BD4.html')">Q4</button>
+        <button class="tablinks" onclick="openTab(event, 'chart5', 'BD5.html')">Q5</button>
+        <button class="tablinks" onclick="openTab(event, 'chart6', 'BD6.html')">Q6</button>
+        <button class="tablinks" onclick="openTab(event, 'chart7', 'BD7.html')">Q7</button>
+        <button class="tablinks" onclick="openTab(event, 'chart8', 'BD8.html')">Q8</button>
+        <button class="tablinks" onclick="openTab(event, 'chart9', 'BD9.html')">Q9</button>
+        <button class="tablinks" onclick="openTab(event, 'chart10', 'BD10.html')">Q10</button>
+        <button class="tablinks" onclick="openTab(event, 'chart11', 'BD11.html')">Q11</button>
+        <button class="tablinks" onclick="openTab(event, 'chart12', 'BD12.html')">Q12</button>
+
+    </div>
+    <div id="chart1" class="tabcontent active">
+        <iframe id="iframe1" src="BD1.html"></iframe>
+    </div>
+    <div id="chart2" class="tabcontent">
+        <iframe id="iframe2" src="BD2.html"></iframe>
+    </div>
+    <div id="chart3" class="tabcontent">
+        <iframe id="iframe3" src="BD3.html"></iframe>
+    </div>
+    <div id="chart4" class="tabcontent">
+        <iframe id="iframe4" src="BD4.html"></iframe>
+    </div>
+    <div id="chart5" class="tabcontent">
+        <iframe id="iframe5" src="BD5.html"></iframe>
+    </div>
+    <div id="chart6" class="tabcontent">
+        <iframe id="iframe6" src="BD6.html"></iframe>
+    </div>
+    <div id="chart7" class="tabcontent">
+        <iframe id="iframe7" src="BD7.html"></iframe>
+    </div>
+    <div id="chart8" class="tabcontent">
+        <iframe id="iframe8" src="BD8.html"></iframe>
+    </div>
+    <div id="chart9" class="tabcontent">
+        <iframe id="iframe9" src="BD9.html"></iframe>
+    </div>
+    <div id="chart10" class="tabcontent">
+        <iframe id="iframe10" src="BD10.html"></iframe>
+    </div>
+    <div id="chart11" class="tabcontent">
+        <iframe id="iframe11" src="BD11.html"></iframe>
+    </div>
+    <div id="chart12" class="tabcontent">
+        <iframe id="iframe12" src="BD12.html"></iframe>
+    </div>
+
+    <script>
+        function openTab(evt, chartId, chartFile) {
+            // Ẩn tất cả nội dung tab
+            document.querySelectorAll('.tabcontent').forEach(tab => tab.classList.remove('active'));
+            // Xóa class 'active' khỏi tất cả tab
+            document.querySelectorAll('.tablinks').forEach(tab => tab.classList.remove('active'));
+
+            // Hiển thị tab được chọn
+            document.getElementById(chartId).classList.add('active');
+            evt.currentTarget.classList.add('active');
+
+            // Load file HTML vào iframe nếu chưa load
+            let iframe = document.getElementById("iframe" + chartId.replace('chart', ''));
+            if (iframe.src !== chartFile) {
+                iframe.src = chartFile;
+            }
+        }
+    </script>
+
+</body>
+</html>

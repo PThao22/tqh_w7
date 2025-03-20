@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+        .bar {
+            stroke: black;
+            stroke-width: 1px;
+        }
+        .label {
+            font-size: 8px; 
+            fill: black;
+        }
+        .tooltip {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 8px;
+            border-radius: 5px;
+            font-size: 12px;
+            display: none;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <h3 style="text-align:center; color: blue; font-size: 20px; font-weight: bold;">Doanh số bán hàng theo Tháng</h3>
+    <div id="chart"></div>
+
+    <script>
+        const margin = {top: 20, right: 100, bottom: 30, left: 200},
+            width = 1200 - margin.left - margin.right,
+            height = 400 - margin.top - margin.bottom;
+
+        const svg = d3.select("#chart")
+            .append("svg")
+            .attr("width", width + margin.left + margin.right)
+            .attr("height", height + margin.top + margin.bottom)
+            .append("g")
+            .attr("transform", `translate(${margin.left},${margin.top})`);
+
+        const tooltip = d3.select("body").append("div").attr("class", "tooltip").style("opacity", 0);
+
+        d3.csv("data_ggsheet - data.csv").then(data => {
+            const parseDate = d3.timeParse("%Y-%m-%d %H:%M:%S");
+            const formatMonth = d3.timeFormat("%m");
+
+            data.forEach(d => {
+                d.date = parseDate(d["Thời gian tạo đơn"]);
+                d.Thang = d.date ? `Tháng ${formatMonth(d.date)}` : "Không xác định";
+                d["Thành tiền"] = +d["Thành tiền"];
+                d["SL"] = +d["SL"];
+            });
+
+            const doanhThuTheoThang = Array.from(
+                d3.rollup(
+                    data,
+                    v => ({
+                        doanhThu: d3.sum(v, d => d["Thành tiền"]) / 1_000_000,
+                        soLuong: d3.sum(v, d => d["SL"])
+                    }),
+                    d => d.Thang
+                ),
+                ([Thang, values]) => ({ Thang, ...values })
+            ).sort((a, b) => +a.Thang.match(/\d+/)[0] - +b.Thang.match(/\d+/)[0]);
+
+            const color = d3.scaleOrdinal()
+                .domain(doanhThuTheoThang.map(d => d.Thang))
+                .range(d3.schemeCategory10);
+
+            const x = d3.scaleBand()
+                .domain(doanhThuTheoThang.map(d => d.Thang))
+                .range([0, width])
+                .padding(0.2);
+
+            svg.append("g")
+                .attr("transform", `translate(0,${height})`)
+                .call(d3.axisBottom(x));
+
+            const yTicks = d3.range(0, 900, 100);
+
+            const y = d3.scaleLinear()
+                .domain([0, 800]) 
+                .range([height, 0]);
+
+            svg.append("g")
+                .call(d3.axisLeft(y).tickValues(yTicks).tickFormat(d => d + "M"));
+
+            svg.selectAll(".bar")
+                .data(doanhThuTheoThang)
+                .enter()
+                .append("rect")
+                .attr("class", "bar")
+                .attr("x", d => x(d.Thang))
+                .attr("y", d => y(d.doanhThu))
+                .attr("width", x.bandwidth())
+                .attr("height", d => height - y(Math.min(d.doanhThu, 800))) 
+                .attr("fill", d => color(d.Thang))
+                .on("mouseover", function(event, d) {
+                    tooltip.transition().duration(200).style("opacity", .95);
+                    tooltip.html(
+                        `<strong>${d.Thang} </strong><br>` +
+                        `Doanh số bán: ${d.doanhThu.toFixed(1)} triệu VND<br>` +
+                        `Số lượng bán: ${d.soLuong} SKUs`
+                    )
+                    .style("left", (event.pageX + 10) + "px")
+                    .style("top", (event.pageY - 28) + "px")
+                    .style("display", "block");
+                })
+                .on("mouseout", function() {
+                    tooltip.transition().duration(300).style("opacity", 0)
+                        .style("display", "none");
+                });
+
+            svg.selectAll(".label")
+                .data(doanhThuTheoThang)
+                .enter()
+                .append("text")
+                .attr("class", "label")
+                .attr("x", d => x(d.Thang) + x.bandwidth() / 2)
+                .attr("y", d => y(Math.min(d.doanhThu, 800)) - 10)
+                .attr("text-anchor", "middle")
+                .attr("dominant-baseline", "middle")
+                .text(d => d.doanhThu.toFixed(1) + " triệu VND");
+
+        });
+    </script>
+</body>
+</html>

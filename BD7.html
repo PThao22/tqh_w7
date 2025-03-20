@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+        .bar {
+            stroke: black;
+            stroke-width: 1px;
+        }
+        .label {
+            font-size: 12px;
+            fill: black;
+        }
+        .tooltip {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 8px;
+            border-radius: 5px;
+            font-size: 12px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s ease-in-out;
+        }
+    </style>
+</head>
+<body>
+    <h3 style="text-align:center; color: blue; font-size: 20px; font-weight: bold;">
+        Xác suất bán hàng theo Nhóm hàng
+    </h3>
+    <svg id="chart"></svg>
+    <div id="tooltip" class="tooltip" style="opacity: 0;"></div>
+   
+    <script>
+        d3.csv("data_ggsheet - data.csv").then(data => {
+            console.log("Dữ liệu đọc từ CSV:", data);
+
+
+            const colorScale = d3.scaleOrdinal(d3.schemeCategory10);
+
+
+            data.forEach(d => {
+                d.NhomHangFull = `[${d["Mã nhóm hàng"]}] ${d["Tên nhóm hàng"]}`;
+            });
+
+
+            const groupedData = d3.rollups(
+                data,
+                v => new Set(v.map(d => d["Mã đơn hàng"])).size,
+                d => d.NhomHangFull
+            );
+
+
+            const totalOrders = new Set(data.map(d => d["Mã đơn hàng"])).size;
+
+
+            const processedData = groupedData.map(([NhomHangFull, SoDonHang]) => ({
+                NhomHangFull,
+                SoDonHang,
+                XacSuat: SoDonHang / totalOrders
+            })).sort((a, b) => b.XacSuat - a.XacSuat);
+
+
+            const margin = {top: 20, right: 100, bottom: 50, left: 250},
+            width = 1200 - margin.left - margin.right,
+            height = 450 - margin.top - margin.bottom;
+
+
+            const svg = d3.select("#chart")
+                .attr("width", width + margin.left + margin.right)
+                .attr("height", height + margin.top + margin.bottom);
+
+
+            const x = d3.scaleLinear()
+                .domain([0, d3.max(processedData, d => d.XacSuat)])
+                .range([margin.left, width]);
+
+
+            const y = d3.scaleBand()
+                .domain(processedData.map(d => d.NhomHangFull))
+                .range([margin.top, height])
+                .padding(0.3);
+
+
+            const tooltip = d3.select("#tooltip");
+
+
+            svg.append("g")
+                .attr("transform", `translate(0,${height})`)
+                .call(d3.axisBottom(x).ticks(5).tickFormat(d3.format(".0%")));
+
+
+            svg.append("g")
+                .attr("transform", `translate(${margin.left},0)`)
+                .call(d3.axisLeft(y).ticks(8));
+
+
+            svg.selectAll(".bar")
+                .data(processedData)
+                .enter()
+                .append("rect")
+                .attr("class", "bar")
+                .attr("x", margin.left)
+                .attr("y", d => y(d.NhomHangFull))
+                .attr("width", d => x(d.XacSuat) - margin.left)
+                .attr("height", y.bandwidth())
+                .attr("fill", d => colorScale(d.NhomHangFull))
+                .on("mouseover", function (event, d) {
+                    d3.select(this).attr("opacity", 0.7);
+                    tooltip.transition().duration(200).style("opacity", 1);
+                    
+                    const maNhomHang = d.NhomHangFull.match(/\[(.*?)\]/)[1]; 
+                    
+                    tooltip.html(`
+                        <strong>Nhóm hàng:</strong> [${maNhomHang}] ${d.NhomHangFull.replace(/\[.*?\] /, '')}<br>
+                        <strong>SL Đơn bán:</strong> ${d.SoDonHang.toLocaleString()}<br>
+                        <strong>Xác suất bán:</strong> ${(d.XacSuat * 100).toFixed(2)}%
+                    `)
+                    .style("left", (event.pageX + 15) + "px")
+                    .style("top", (event.pageY - 28) + "px");
+                })
+
+
+
+            svg.selectAll(".label")
+                .data(processedData)
+                .enter()
+                .append("text")
+                .attr("class", "label")
+                .attr("x", d => x(d.XacSuat) + 5)
+                .attr("y", d => y(d.NhomHangFull) + y.bandwidth() / 2)
+                .attr("dy", "0.35em")
+                .text(d => (d.XacSuat * 100).toFixed(2) + "%");
+        });
+    </script>
+</body>
+</html>
